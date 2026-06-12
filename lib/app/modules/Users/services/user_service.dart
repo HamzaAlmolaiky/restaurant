@@ -4,6 +4,7 @@
 
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import '../../../helpers/database_helper.dart';
+import '../../../helpers/password_hasher.dart';
 import '../models/user_daily_stats_model.dart';
 import '../models/user_model.dart';
 
@@ -16,9 +17,14 @@ class UserService {
 
   Future<bool> addUser(UserModel user) async {
     final db = await DatabaseHelper.instance.database;
+    final userToSave = user.copyWith(
+      password: PasswordHasher.isHashed(user.password)
+          ? user.password
+          : PasswordHasher.hash(user.password),
+    );
     final id = await db.insert(
       'Users',
-      user.toMap(),
+      userToSave.toMap(),
       conflictAlgorithm: ConflictAlgorithm.fail,
     );
     return id > 0;
@@ -26,9 +32,14 @@ class UserService {
 
   Future<bool> updateUser(UserModel user) async {
     final db = await DatabaseHelper.instance.database;
+    final userToSave = user.copyWith(
+      password: PasswordHasher.isHashed(user.password)
+          ? user.password
+          : PasswordHasher.hash(user.password),
+    );
     final rows = await db.update(
       'Users',
-      user.toMap(),
+      userToSave.toMap(),
       where: 'UserID = ?',
       whereArgs: [user.userID],
     );
@@ -94,7 +105,7 @@ class UserService {
     final db = await DatabaseHelper.instance.database;
     final rows = await db.update(
       'Users',
-      {'Password': newPassword},
+      {'Password': PasswordHasher.hash(newPassword)},
       where: 'UserID = ?',
       whereArgs: [userId],
     );
@@ -109,11 +120,23 @@ class UserService {
   ) async {
     final db = await DatabaseHelper.instance.database;
     // لن نحدّث إلا إذا طابقت كلمة المرور القديمة
+    final maps = await db.query(
+      'Users',
+      columns: ['Password'],
+      where: 'UserID = ?',
+      whereArgs: [userId],
+      limit: 1,
+    );
+    if (maps.isEmpty) return false;
+
+    final storedPassword = maps.first['Password'] as String? ?? '';
+    if (!PasswordHasher.verify(oldPassword, storedPassword)) return false;
+
     final rows = await db.update(
       'Users',
-      {'Password': newPassword},
-      where: 'UserID = ? AND Password = ?',
-      whereArgs: [userId, oldPassword],
+      {'Password': PasswordHasher.hash(newPassword)},
+      where: 'UserID = ?',
+      whereArgs: [userId],
     );
     return rows > 0;
   }
@@ -140,9 +163,9 @@ class UserService {
       ORDER BY DATE(o.OrderDate) DESC
     ''';
     final maps = await db.rawQuery(sql, [
-      userId,
       fromDate.toIso8601String(),
       toDate.toIso8601String(),
+      userId,
     ]);
     return maps.map((map) => UserDailyStatsModel.fromMap(map)).toList();
   }

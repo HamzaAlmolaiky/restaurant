@@ -22,7 +22,7 @@ class LoginView extends GetView<AuthController> {
       backgroundColor: const Color(0xFFF5F7FA),
       body: Center(
         child: Container(
-          constraints: const BoxConstraints(maxWidth: 450, maxHeight: 650),
+          constraints: const BoxConstraints(maxWidth: 450, maxHeight: 700),
           child: Card(
             elevation: 20,
             shadowColor: Colors.black.withOpacity(0.1),
@@ -30,7 +30,7 @@ class LoginView extends GetView<AuthController> {
               borderRadius: BorderRadius.circular(20),
             ),
             child: Container(
-              padding: const EdgeInsets.all(40),
+              padding: const EdgeInsets.all(32),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(20),
                 gradient: LinearGradient(

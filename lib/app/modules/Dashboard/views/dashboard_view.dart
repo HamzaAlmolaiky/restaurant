@@ -2,7 +2,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../../../routes/app_pages.dart';
 import '../../../widgets/page_header.dart';
 import '../../../widgets/statistics_card_data.dart';
 import '../../../widgets/statistics_row.dart';
@@ -141,26 +140,26 @@ class DashboardView extends GetView<DashboardController> {
                           isSelected: controller.selectedIndex.value == 11,
                         ),
                         _buildNavItem(
-                          icon: Icons.settings_outlined,
-                          title: 'الاعدادات',
+                          icon: Icons.payment_outlined,
+                          title: 'مدفوعات العملاء',
                           index: 12,
                           isSelected: controller.selectedIndex.value == 12,
                         ),
                         _buildNavItem(
-                          icon: Icons.payment_outlined,
-                          title: 'مدفوعات العملاء',
+                          icon: Icons.local_atm_outlined,
+                          title: 'الورديات',
                           index: 13,
                           isSelected: controller.selectedIndex.value == 13,
                         ),
                         _buildNavItem(
-                          icon: Icons.local_atm_outlined,
-                          title: 'الورديات',
+                          icon: Icons.account_balance_wallet_outlined,
+                          title: 'المصروفات',
                           index: 14,
                           isSelected: controller.selectedIndex.value == 14,
                         ),
                         _buildNavItem(
-                          icon: Icons.account_balance_wallet_outlined,
-                          title: 'المصروفات',
+                          icon: Icons.settings_outlined,
+                          title: 'الاعدادات',
                           index: 15,
                           isSelected: controller.selectedIndex.value == 15,
                         ),
@@ -208,13 +207,6 @@ class DashboardView extends GetView<DashboardController> {
                             );
                           },
                         ),
-                      ),
-                      IconButton(
-                        onPressed: () {
-                          Get.toNamed(Routes.SETTINGS);
-                        },
-                        icon: const Icon(Icons.settings_outlined),
-                        color: Colors.grey,
                       ),
                     ],
                   ),
@@ -381,7 +373,10 @@ class DashboardView extends GetView<DashboardController> {
                   color: Color(0xFF2D3748),
                 ),
               ),
-              TextButton(onPressed: () {}, child: const Text('عرض الكل')),
+              TextButton(
+                onPressed: () => controller.changeIndex(4),
+                child: const Text('عرض الكل'),
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -533,21 +528,36 @@ class DashboardView extends GetView<DashboardController> {
                   icon: Icons.add_shopping_cart,
                   title: 'طلب جديد',
                   color: const Color(0xFF3B82F6),
+                  onTap: () => Get.toNamed('/sub-main'),
                 ),
                 _buildQuickActionItem(
                   icon: Icons.person_add,
                   title: 'عميل جديد',
                   color: const Color(0xFF10B981),
+                  onTap: () => controller.changeIndex(6),
                 ),
                 _buildQuickActionItem(
                   icon: Icons.restaurant_menu,
                   title: 'منتج جديد',
                   color: const Color(0xFF8B5CF6),
+                  onTap: () => controller.changeIndex(3),
                 ),
                 _buildQuickActionItem(
                   icon: Icons.assessment,
                   title: 'تقرير يومي',
                   color: const Color(0xFFF59E0B),
+                  onTap: () {
+                    final now = DateTime.now();
+                    final from = DateTime(now.year, now.month, now.day);
+                    final to = DateTime(now.year, now.month, now.day, 23, 59, 59);
+                    Get.toNamed(
+                      '/report',
+                      arguments: {
+                        'from': from,
+                        'to': to,
+                      },
+                    );
+                  },
                 ),
               ],
             ),
@@ -561,13 +571,14 @@ class DashboardView extends GetView<DashboardController> {
     required IconData icon,
     required String title,
     required Color color,
+    required VoidCallback onTap,
   }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () {},
+          onTap: onTap,
           borderRadius: BorderRadius.circular(12),
           child: Container(
             padding: const EdgeInsets.all(16),

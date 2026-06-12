@@ -5,11 +5,13 @@ import '../../MenuItems/models/menu_item_model.dart';
 class MenuCategoryModel {
   final int? categoryID;
   final String categoryName;
+  final String? imagePath;
   List<MenuItemModel> menuItems; // قائمة العناصر التابعة لهذه الفئة
 
   MenuCategoryModel({
     this.categoryID,
     required this.categoryName,
+    this.imagePath,
     List<MenuItemModel>? menuItems, // نجعلها اختيارية في المُنشئ
   }) : menuItems = menuItems ?? []; // إذا كانت null، يتم تهيئتها كقائمة فارغة
 
@@ -20,6 +22,7 @@ class MenuCategoryModel {
     return MenuCategoryModel(
       categoryID: map['CategoryID'],
       categoryName: map['CategoryName'],
+      imagePath: map['ImagePath'] as String?,
     );
   }
 
@@ -27,12 +30,17 @@ class MenuCategoryModel {
     return MenuCategoryModel(
       categoryID: json['CategoryID'],
       categoryName: json['CategoryName'],
+      imagePath: json['ImagePath'] as String?,
     );
   }
 
   /// تحويل النموذج إلى خريطة (Map) لتخزينه في قاعدة البيانات
   /// هذا مفيد عند إضافة أو تحديث الفئات في قاعدة البيانات
   Map<String, dynamic> toMap() {
-    return {'CategoryID': categoryID, 'CategoryName': categoryName};
+    return {
+      'CategoryID': categoryID,
+      'CategoryName': categoryName,
+      'ImagePath': imagePath,
+    };
   }
 }

@@ -30,6 +30,7 @@ class EmployeeController extends GetxController {
   var searchQuery = ''.obs;
   var selectedDepartment = 'الكل'.obs;
   var selectedStatus = 'الكل'.obs;
+  var selectedShift = 'الكل'.obs;
   // Header statistics (reactive)
   var totalEmployees = 0.obs;
   var presentToday = 0.obs;
@@ -71,38 +72,52 @@ class EmployeeController extends GetxController {
     }
   }
 
-  /// إضافة موظف جديد
-  /// يتحقق من صحة بيانات الموظف قبل الإضافة.
-  /// يستخدم `isLoading` لتتبع حالة الإضافة.
-  /// يستخدم `AppDialogs.show` لعرض رسائل النجاح أو الأخطاء.
-  Future<void> addEmployee() async {
+  Future<void> saveEmployee({EmployeeModel? existingEmployee}) async {
     if (!_validateForm()) return;
 
     try {
       isLoading.value = true;
+      if (existingEmployee == null) {
+        final newEmployee = EmployeeModel(
+          name: nameController.text,
+          phoneNumber: phoneController.text,
+          position: positionController.text,
+          basicSalary: double.tryParse(salaryController.text) ?? 0.0,
+          hireDate: DateTime.now(),
+          isActive: true,
+        );
 
-      final newEmployee = EmployeeModel(
-        name: nameController.text,
-        phoneNumber: phoneController.text,
-        position: positionController.text,
-        // department: departmentController.text,
-        basicSalary: double.tryParse(salaryController.text) ?? 0.0,
-        hireDate: DateTime.now(),
-        isActive: true,
-      );
+        final success = await _employeeService.addEmployee(newEmployee);
 
-      final success = await _employeeService.addEmployee(newEmployee);
-
-      if (success) {
-        Get.back();
-        _clearForm();
-        await loadEmployeesFromDB();
-        AppDialogs.show('نجح', 'تم إضافة الموظف بنجاح');
+        if (success) {
+          Get.back();
+          _clearForm();
+          await loadEmployeesFromDB();
+          AppDialogs.show('نجح', 'تم إضافة الموظف بنجاح');
+        } else {
+          AppDialogs.show('خطأ', 'فشل في إضافة الموظف');
+        }
       } else {
-        AppDialogs.show('خطأ', 'فشل في إضافة الموظف');
+        final id = existingEmployee.employeeID;
+        if (id == null) return;
+        final employeeData = {
+          'Name': nameController.text,
+          'PhoneNumber': phoneController.text,
+          'Position': positionController.text,
+          'BasicSalary': double.tryParse(salaryController.text) ?? 0.0,
+        };
+        final success = await updateEmployee(id, employeeData);
+        if (success) {
+          Get.back();
+          _clearForm();
+          await loadEmployeesFromDB();
+          AppDialogs.show('نجح', 'تم تحديث الموظف بنجاح');
+        } else {
+          AppDialogs.show('خطأ', 'فشل في تحديث الموظف');
+        }
       }
     } catch (e) {
-      AppDialogs.show('خطأ', 'حدث خطأ أثناء إضافة الموظف');
+      AppDialogs.show('خطأ', 'حدث خطأ أثناء حفظ الموظف');
     } finally {
       isLoading.value = false;
     }
@@ -176,21 +191,24 @@ class EmployeeController extends GetxController {
   /// تصفية الموظفين حسب البحث والقسم والحالة
   void _filterEmployees() {
     var filtered = employees.where((employee) {
-      final matchesSearch =
-          employee.name.toLowerCase().contains(
-            searchQuery.value.toLowerCase(),
-          ) ||
-          employee.phoneNumber!.contains(searchQuery.value);
+      // فلتر البحث النصي (مع معالجة null)
+      final q = searchQuery.value.toLowerCase();
+      final matchesSearch = q.isEmpty ||
+          employee.name.toLowerCase().contains(q) ||
+          (employee.phoneNumber ?? '').contains(q);
 
-      // final matchesDepartment = selectedDepartment.value == 'الكل' ||
-      //     employee.department == selectedDepartment.value;
-
+      // فلتر الحالة
       final matchesStatus =
           selectedStatus.value == 'الكل' ||
           (selectedStatus.value == 'نشط' && employee.isActive) ||
           (selectedStatus.value == 'غير نشط' && !employee.isActive);
 
-      return matchesSearch && matchesStatus;
+      // فلتر القسم (مبني على المسمى الوظيفي لعدم وجود حقل قسم منفصل)
+      final dep = selectedDepartment.value;
+      final matchesDepartment = dep == 'الكل' ||
+          employee.position.toLowerCase().contains(dep.toLowerCase());
+
+      return matchesSearch && matchesStatus && matchesDepartment;
     }).toList();
 
     filteredEmployees.assignAll(filtered);

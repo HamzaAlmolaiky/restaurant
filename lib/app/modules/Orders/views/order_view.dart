@@ -28,7 +28,7 @@ class OrderView extends GetView<OrderController> {
             actions: [
               PrimaryButton(
                 text: 'طلب جديد',
-                onPressed: () {}, // => Get.toNamed('/submain'),
+                onPressed: () => Get.toNamed('/sub-main'),
                 icon: Icons.add,
                 backgroundColor: const Color(0xFF667EEA),
               ),
@@ -139,7 +139,7 @@ class OrderView extends GetView<OrderController> {
                 // إضافة padding لجعل ارتفاع الزر متوافقًا مع الحقول الأخرى
                 padding: const EdgeInsets.symmetric(vertical: 4),
                 child: IconButton(
-                  onPressed: () {},
+                  onPressed: () => _showAdvancedFiltersDialog(context),
                   icon: const Icon(Icons.filter_list, color: Color(0xFF667EEA)),
                   tooltip: 'المزيد من الفلاتر',
                 ),
@@ -414,6 +414,63 @@ class OrderView extends GetView<OrderController> {
       return;
     }
     Get.dialog(_OrderDetailsDialog(controller: controller));
+  }
+
+  void _showAdvancedFiltersDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Row(
+            children: [
+              Icon(Icons.filter_alt, color: Color(0xFF667EEA)),
+              SizedBox(width: 8),
+              Text('خيارات التصفية الإضافية'),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'البحث يبحث في: رقم الطلب، اسم العميل، والملاحظات.',
+                style: TextStyle(fontSize: 14, color: Colors.grey),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'حالة التصفية الحالية:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Obx(() => Text('• البحث الحالي: ${controller.searchQuery.value.isEmpty ? "لا يوجد" : controller.searchQuery.value}')),
+              Obx(() => Text('• فلتر الحالة: ${controller.statusFilter.value}')),
+              Obx(() => Text('• فلتر التاريخ: ${controller.dateFilter.value}')),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                controller.setSearchQuery('');
+                controller.setStatusFilter('جميع الحالات');
+                controller.setDateFilter('الكل');
+                Navigator.of(context).pop();
+                AppDialogs.show('تمت العملية', 'تم إعادة تعيين جميع الفلاتر');
+              },
+              child: const Text('إعادة تعيين الفلاتر', style: TextStyle(color: Colors.red)),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF667EEA),
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('إغلاق'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _editOrder(String orderNumber) async {

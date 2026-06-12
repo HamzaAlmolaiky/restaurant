@@ -44,7 +44,7 @@ class MenuCategoryController extends GetxController {
   }
 
   /// تحديث فئة (مع منع التكرار)
-  Future<void> updateCategoryWithValidation(int id, String newName) async {
+  Future<void> updateCategoryWithValidation(int id, String newName, String? imagePath) async {
     try {
       final name = newName.trim();
       if (name.isEmpty) {
@@ -57,7 +57,7 @@ class MenuCategoryController extends GetxController {
         return;
       }
       final updated = await _categoryService.updateCategory(
-        MenuCategoryModel(categoryID: id, categoryName: name),
+        MenuCategoryModel(categoryID: id, categoryName: name, imagePath: imagePath),
       );
       if (updated) {
         await fetchCategories();
@@ -71,7 +71,7 @@ class MenuCategoryController extends GetxController {
   }
 
   /// اضافة فئة (مع منع التكرار)
-  Future<void> addCategoryWithValidation(String name) async {
+  Future<void> addCategoryWithValidation(String name, String? imagePath) async {
     try {
       final title = name.trim();
       if (title.isEmpty) {
@@ -83,7 +83,7 @@ class MenuCategoryController extends GetxController {
         AppDialogs.show('تنبيه', 'هذه الفئة موجودة مسبقاً');
         return;
       }
-      await _categoryService.addCategory(MenuCategoryModel(categoryName: title));
+      await _categoryService.addCategory(MenuCategoryModel(categoryName: title, imagePath: imagePath));
       await fetchCategories();
       AppDialogs.show('تم', 'تمت إضافة الفئة بنجاح');
     } catch (e) {

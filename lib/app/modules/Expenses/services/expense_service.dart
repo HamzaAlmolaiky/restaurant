@@ -142,4 +142,16 @@ class ExpenseService {
     );
     return rowsAffected > 0;
   }
+
+  // UpdateExpense
+  Future<bool> updateExpense(ExpenseModel expense) async {
+    final db = await DatabaseHelper.instance.database;
+    final rowsAffected = await db.update(
+      'Expenses',
+      expense.toMap(),
+      where: 'ExpenseID = ?',
+      whereArgs: [expense.expenseID],
+    );
+    return rowsAffected > 0;
+  }
 }

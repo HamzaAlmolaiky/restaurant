@@ -68,23 +68,23 @@ class AuthController extends GetxController {
           Get.offAllNamed(Routes.CASH_DRAWER_SETUP);
         }
       } else {
-        AlertDialog(
+        Get.dialog(AlertDialog(
           title: const Text('خطأ في تسجيل الدخول'),
           content: const Text('اسم المستخدم أو كلمة المرور غير صحيحة.'),
           actions: [
             TextButton(onPressed: () => Get.back(), child: const Text('حسناً')),
           ],
-        );
+        ));
         print('اسم المستخدم أو كلمة المرور غير صحيحة');
       }
     } catch (e) {
-      AlertDialog(
+      Get.dialog(AlertDialog(
         title: const Text('خطأ في تسجيل الدخول'),
         content: Text('حدث خطأ أثناء تسجيل الدخول: ${e.toString()}'),
         actions: [
           TextButton(onPressed: () => Get.back(), child: const Text('حسناً')),
         ],
-      );
+      ));
       print('خطأ أثناء تسجيل الدخول: ${e.toString()}');
     } finally {
       isLoading.value = false;

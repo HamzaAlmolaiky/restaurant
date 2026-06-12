@@ -2,6 +2,7 @@
 class CustomerPaymentModel {
   final int? paymentId;
   final int customerID;
+  final String? paymentNumber;
   final int shiftID;
   final int userID;
   final int? orderID;
@@ -15,6 +16,7 @@ class CustomerPaymentModel {
   CustomerPaymentModel({
     this.paymentId,
     required this.customerID,
+    this.paymentNumber,
     required this.shiftID,
     required this.userID,
     this.orderID,
@@ -30,6 +32,7 @@ class CustomerPaymentModel {
     return CustomerPaymentModel(
       paymentId: map['PaymentID'] ?? map['PaymentId'],
       customerID: map['CustomerID'],
+      paymentNumber: map['PaymentNumber'],
       shiftID: map['ShiftID'],
       userID: map['UserID'],
       orderID: map['OrderID'],
@@ -45,6 +48,7 @@ class CustomerPaymentModel {
   Map<String, dynamic> toMap() {
     final map = <String, dynamic>{
       'CustomerID': customerID,
+      'PaymentNumber': paymentNumber,
       'ShiftID': shiftID,
       'UserID': userID,
       'OrderID': orderID,

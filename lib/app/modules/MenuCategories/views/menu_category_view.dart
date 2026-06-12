@@ -2,6 +2,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:restaurant/app/helpers/app_dialogs.dart';
 import '../../../helpers/ui_helpers.dart';
 import '../../../widgets/filter_bar.dart';
 import '../../../widgets/grid_card.dart';
@@ -299,7 +301,7 @@ class MenuCategoryView extends GetView<MenuCategoryController> {
       // دالة التعامل مع اختيار عنصر من القائمة
       onMenuItemSelected: (value) {
         if (value == 'edit') {
-          _showEditCategoryDialog(context, categoryId, name);
+          _showEditCategoryDialog(context, categoryId, name, category.imagePath);
         } else if (value == 'delete') {
           controller.deleteCategory(categoryId);
         }
@@ -313,35 +315,69 @@ class MenuCategoryView extends GetView<MenuCategoryController> {
             flex: 3,
             child: Container(
               width: double.infinity,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    baseColor.withOpacity(0.8),
-                    baseColor.withOpacity(0.6),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: const BorderRadius.only(
+              decoration: const BoxDecoration(
+                borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(16),
                   topRight: Radius.circular(16),
                 ),
               ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(icon, size: 48, color: Colors.white),
-                  const SizedBox(height: 8),
-                  Text(
-                    name,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+              child: ClipRRect(
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(16),
+                  topRight: Radius.circular(16),
+                ),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    // Image or fallback gradient
+                    category.imagePath != null && category.imagePath!.isNotEmpty
+                        ? buildAppImage(category.imagePath)
+                        : Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  baseColor.withOpacity(0.8),
+                                  baseColor.withOpacity(0.6),
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                            ),
+                            child: Icon(icon, size: 48, color: Colors.white),
+                          ),
+                    // Dark overlay for text readability
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.black.withOpacity(0.4),
+                            Colors.transparent,
+                          ],
+                          begin: Alignment.bottomCenter,
+                          end: Alignment.topCenter,
+                        ),
+                      ),
                     ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
+                    Center(
+                      child: Text(
+                        name,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          shadows: [
+                            Shadow(
+                              blurRadius: 4,
+                              color: Colors.black45,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -409,28 +445,86 @@ class MenuCategoryView extends GetView<MenuCategoryController> {
 
   void _showAddCategoryDialog(BuildContext context) {
     final txt = TextEditingController();
+    final imgTxt = TextEditingController();
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext ctx) {
         return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: const Text('إضافة فئة جديدة'),
-          content: SizedBox(
-            width: 400,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: txt,
-                  autofocus: true,
-                  decoration: const InputDecoration(
-                    labelText: 'اسم الفئة',
-                    border: OutlineInputBorder(),
-                  ),
-                  onSubmitted: (_) => _submitAdd(ctx, txt.text),
+          content: StatefulBuilder(
+            builder: (context, setState) {
+              return SizedBox(
+                width: 460,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('اسم الفئة'),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: txt,
+                      autofocus: true,
+                      decoration: const InputDecoration(
+                        hintText: 'مثال: وجبات رئيسية',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text('صورة الفئة (رابط أو مسار محلي)'),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: imgTxt,
+                            decoration: const InputDecoration(
+                              hintText: 'أدخل رابط الصورة أو اختر من جهازك',
+                              border: OutlineInputBorder(),
+                            ),
+                            onChanged: (_) => setState(() {}),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          onPressed: () async {
+                            final result = await FilePicker.platform.pickFiles(
+                              type: FileType.image,
+                            );
+                            if (result != null && result.files.single.path != null) {
+                              imgTxt.text = result.files.single.path!;
+                              setState(() {});
+                            }
+                          },
+                          icon: const Icon(Icons.folder_open),
+                          tooltip: 'تصفح من جهازك',
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    if (imgTxt.text.trim().isNotEmpty) ...[
+                      const Text('معاينة الصورة:'),
+                      const SizedBox(height: 6),
+                      Center(
+                        child: Container(
+                          width: double.infinity,
+                          height: 120,
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: buildAppImage(imgTxt.text.trim()),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
-              ],
-            ),
+              );
+            },
           ),
           actions: [
             TextButton(
@@ -438,7 +532,19 @@ class MenuCategoryView extends GetView<MenuCategoryController> {
               child: const Text('إلغاء'),
             ),
             ElevatedButton(
-              onPressed: () => _submitAdd(ctx, txt.text),
+              onPressed: () async {
+                final name = txt.text.trim();
+                final image = imgTxt.text.trim();
+                if (name.isEmpty) {
+                  AppDialogs.show('تنبيه', 'اسم الفئة مطلوب');
+                  return;
+                }
+                Navigator.of(ctx).pop();
+                await controller.addCategoryWithValidation(
+                  name,
+                  image.isEmpty ? null : image,
+                );
+              },
               child: const Text('حفظ'),
             ),
           ],
@@ -447,40 +553,92 @@ class MenuCategoryView extends GetView<MenuCategoryController> {
     );
   }
 
-  void _submitAdd(BuildContext ctx, String name) {
-    controller.addCategoryWithValidation(name).then((_) {
-      Navigator.of(ctx).pop();
-    });
-  }
-
   void _showEditCategoryDialog(
     BuildContext context,
     int categoryId,
     String categoryName,
+    String? categoryImagePath,
   ) {
     final txt = TextEditingController(text: categoryName);
+    final imgTxt = TextEditingController(text: categoryImagePath ?? '');
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext ctx) {
         return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: const Text('تعديل الفئة'),
-          content: SizedBox(
-            width: 400,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: txt,
-                  autofocus: true,
-                  decoration: const InputDecoration(
-                    labelText: 'اسم الفئة',
-                    border: OutlineInputBorder(),
-                  ),
-                  onSubmitted: (_) => _submitEdit(ctx, categoryId, txt.text),
+          content: StatefulBuilder(
+            builder: (context, setState) {
+              return SizedBox(
+                width: 460,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('اسم الفئة'),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: txt,
+                      autofocus: true,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text('صورة الفئة (رابط أو مسار محلي)'),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: imgTxt,
+                            decoration: const InputDecoration(
+                              hintText: 'أدخل رابط الصورة أو اختر من جهازك',
+                              border: OutlineInputBorder(),
+                            ),
+                            onChanged: (_) => setState(() {}),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          onPressed: () async {
+                            final result = await FilePicker.platform.pickFiles(
+                              type: FileType.image,
+                            );
+                            if (result != null && result.files.single.path != null) {
+                              imgTxt.text = result.files.single.path!;
+                              setState(() {});
+                            }
+                          },
+                          icon: const Icon(Icons.folder_open),
+                          tooltip: 'تصفح من جهازك',
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    if (imgTxt.text.trim().isNotEmpty) ...[
+                      const Text('معاينة الصورة:'),
+                      const SizedBox(height: 6),
+                      Center(
+                        child: Container(
+                          width: double.infinity,
+                          height: 120,
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: buildAppImage(imgTxt.text.trim()),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
-              ],
-            ),
+              );
+            },
           ),
           actions: [
             TextButton(
@@ -488,18 +646,25 @@ class MenuCategoryView extends GetView<MenuCategoryController> {
               child: const Text('إلغاء'),
             ),
             ElevatedButton(
-              onPressed: () => _submitEdit(ctx, categoryId, txt.text),
+              onPressed: () async {
+                final name = txt.text.trim();
+                final image = imgTxt.text.trim();
+                if (name.isEmpty) {
+                  AppDialogs.show('تنبيه', 'اسم الفئة مطلوب');
+                  return;
+                }
+                Navigator.of(ctx).pop();
+                await controller.updateCategoryWithValidation(
+                  categoryId,
+                  name,
+                  image.isEmpty ? null : image,
+                );
+              },
               child: const Text('حفظ التعديلات'),
             ),
           ],
         );
       },
     );
-  }
-
-  void _submitEdit(BuildContext ctx, int id, String name) {
-    controller.updateCategoryWithValidation(id, name).then((_) {
-      Navigator.of(ctx).pop();
-    });
   }
 }

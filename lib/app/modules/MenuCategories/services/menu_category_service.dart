@@ -85,7 +85,7 @@ class MenuCategoryService {
   Future<List<MenuCategoryModel>> getCategoriesWithItems() async {
     final db = await DatabaseHelper.instance.database;
     const sql = '''
-      SELECT c.CategoryID, c.CategoryName, i.MenuItemsID, i.ItemsName, i.Price
+      SELECT c.CategoryID, c.CategoryName, c.ImagePath, i.MenuItemsID, i.ItemsName, i.Price, i.ImagePath as ItemImagePath
       FROM MenuCategory c
       LEFT JOIN MenuItems i ON c.CategoryID = i.CategoryID
       ORDER BY c.CategoryID, i.ItemsName
@@ -110,6 +110,7 @@ class MenuCategoryService {
           itemsName: row['ItemsName'] as String,
           price: (row['Price'] as num).toDouble(),
           categoryID: categoryId,
+          imagePath: row['ItemImagePath'] as String?,
         );
         categoriesMap[categoryId]?.menuItems.add(menuItem);
       }

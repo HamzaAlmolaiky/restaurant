@@ -4,7 +4,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-
+import 'package:file_picker/file_picker.dart';
 import '../../../helpers/ui_helpers.dart';
 import '../../../widgets/filter_bar.dart';
 import '../../../widgets/grid_card.dart';
@@ -193,10 +193,12 @@ class MenuItemView extends GetView<MenuItemController> {
                       'category': item.category?.categoryName ?? 'غير مصنف',
                       'price': item.price,
                       'categoryId': item.categoryID,
+                      'imagePath': item.imagePath,
                       // حقول افتراضية للحفاظ على الواجهة دون الاعتماد على بيانات تجريبية
                       'status': 'متوفر',
                       'description': '',
-                      'isFavorite': false,
+                      'isFavorite': item.menuItemsID != null &&
+                          controller.favoriteItemIds.contains(item.menuItemsID),
                     };
                     return _buildProductCard(context, product);
                   },
@@ -270,38 +272,48 @@ class MenuItemView extends GetView<MenuItemController> {
                 topRight: Radius.circular(16),
               ),
             ),
-            child: Stack(
-              children: [
-                const Center(
-                  child: Icon(
-                    Icons.restaurant_menu,
-                    size: 40,
-                    color: Colors.grey,
-                  ),
-                ),
-                Positioned(
-                  top: 12,
-                  right: 12,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: statusBgColor,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      status,
-                      style: TextStyle(
-                        color: statusColor,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w500,
+            child: ClipRRect(
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(16),
+              ),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  buildAppImage(
+                    product['imagePath'] as String?,
+                    placeholder: const Center(
+                      child: Icon(
+                        Icons.restaurant_menu,
+                        size: 40,
+                        color: Colors.grey,
                       ),
                     ),
                   ),
-                ),
-              ],
+                  Positioned(
+                    top: 12,
+                    right: 12,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: statusBgColor,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        status,
+                        style: TextStyle(
+                          color: statusColor,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
           // Product Details
@@ -411,6 +423,7 @@ class MenuItemView extends GetView<MenuItemController> {
   void _showAddProductDialog(BuildContext context) {
     final nameCtrl = TextEditingController();
     final priceCtrl = TextEditingController();
+    final imgCtrl = TextEditingController();
     int? selectedCatId = controller.allCategories.isNotEmpty
         ? controller.allCategories.first.categoryID
         : null;
@@ -430,59 +443,111 @@ class MenuItemView extends GetView<MenuItemController> {
               Text('منتج جديد'),
             ],
           ),
-          content: SizedBox(
-            width: 460,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('اسم المنتج'),
-                const SizedBox(height: 6),
-                TextField(
-                  controller: nameCtrl,
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                    hintText: 'مثال: بيتزا مارجريتا',
-                  ),
-                ),
-                const SizedBox(height: 12),
-                const Text('السعر'),
-                const SizedBox(height: 6),
-                TextField(
-                  controller: priceCtrl,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                    hintText: 'مثال: 25.0',
-                  ),
-                ),
-                const SizedBox(height: 12),
-                const Text('الفئة'),
-                const SizedBox(height: 6),
-                StatefulBuilder(
-                  builder: (ctx, setState) {
-                    final cats = controller.allCategories;
-                    return DropdownButtonFormField<int>(
-                      value: selectedCatId,
-                      items: cats
-                          .map(
-                            (c) => DropdownMenuItem<int>(
-                              value: c.categoryID!,
-                              child: Text(c.categoryName),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (v) => setState(() => selectedCatId = v),
-                      decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
+          content: StatefulBuilder(
+            builder: (ctx, setState) {
+              final cats = controller.allCategories;
+              return SizedBox(
+                width: 460,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('اسم المنتج'),
+                      const SizedBox(height: 6),
+                      TextField(
+                        controller: nameCtrl,
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                          hintText: 'مثال: بيتزا مارجريتا',
+                        ),
                       ),
-                    );
-                  },
+                      const SizedBox(height: 12),
+                      const Text('السعر'),
+                      const SizedBox(height: 6),
+                      TextField(
+                        controller: priceCtrl,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                          hintText: 'مثال: 25.0',
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      const Text('الفئة'),
+                      const SizedBox(height: 6),
+                      DropdownButtonFormField<int>(
+                        value: selectedCatId,
+                        items: cats
+                            .map(
+                              (c) => DropdownMenuItem<int>(
+                                value: c.categoryID!,
+                                child: Text(c.categoryName),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (v) => setState(() => selectedCatId = v),
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      const Text('صورة المنتج (رابط أو مسار محلي)'),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: imgCtrl,
+                              decoration: const InputDecoration(
+                                hintText: 'رابط الصورة أو مسار محلي',
+                                border: OutlineInputBorder(),
+                              ),
+                              onChanged: (_) => setState(() {}),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            onPressed: () async {
+                              final result = await FilePicker.platform.pickFiles(
+                                type: FileType.image,
+                              );
+                              if (result != null && result.files.single.path != null) {
+                                imgCtrl.text = result.files.single.path!;
+                                setState(() {});
+                              }
+                            },
+                            icon: const Icon(Icons.folder_open),
+                            tooltip: 'تصفح من جهازك',
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      if (imgCtrl.text.trim().isNotEmpty) ...[
+                        const Text('معاينة الصورة:'),
+                        const SizedBox(height: 6),
+                        Center(
+                          child: Container(
+                            width: double.infinity,
+                            height: 120,
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey.shade300),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: buildAppImage(imgCtrl.text.trim()),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
-              ],
-            ),
+              );
+            },
           ),
           actions: [
             TextButton(
@@ -493,6 +558,7 @@ class MenuItemView extends GetView<MenuItemController> {
               onPressed: () async {
                 final name = nameCtrl.text.trim();
                 final price = double.tryParse(priceCtrl.text.trim()) ?? -1;
+                final image = imgCtrl.text.trim();
                 if (name.isEmpty || price <= 0 || selectedCatId == null) {
                   AppDialogs.show(
                     'تنبيه',
@@ -506,6 +572,7 @@ class MenuItemView extends GetView<MenuItemController> {
                     itemsName: name,
                     price: price,
                     categoryID: selectedCatId!,
+                    imagePath: image.isEmpty ? null : image,
                   ),
                 );
               },
@@ -543,22 +610,71 @@ class MenuItemView extends GetView<MenuItemController> {
   }
 
   void _toggleFavorite(Map<String, dynamic> product) {
-    product['isFavorite'] = !product['isFavorite'];
-    print('تغيير المفضلة للمنتج: ${product['name']}');
+    final id = product['id'] as int?;
+    if (id != null) {
+      controller.toggleFavorite(id);
+    }
   }
 
   void _viewProductDetails(Map<String, dynamic> product) {
-    print('عرض تفاصيل المنتج: ${product['name']}');
+    final name = product['name'] as String;
+    final category = product['category'] as String;
+    final price = product['price'] as double;
+    final imagePath = product['imagePath'] as String?;
+
+    Get.dialog(
+      AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.fastfood, color: Color(0xFF8B5CF6)),
+            const SizedBox(width: 8),
+            const Text('تفاصيل المنتج'),
+            const Spacer(),
+            IconButton(
+              onPressed: () => Get.back(),
+              icon: const Icon(Icons.close),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (imagePath != null && imagePath.isNotEmpty)
+              Container(
+                height: 180,
+                width: double.infinity,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: buildAppImage(imagePath),
+                ),
+              ),
+            Text('الاسم: $name', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            const SizedBox(height: 12),
+            Text('الفئة: $category'),
+            const SizedBox(height: 8),
+            Text('السعر: ${price.toStringAsFixed(2)} ريال', style: const TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.bold)),
+          ],
+        ),
+      ),
+    );
   }
 
   void _duplicateProduct(Map<String, dynamic> product) async {
     final name = product['name'] as String;
     final price = (product['price'] as num).toDouble();
     final categoryId = product['categoryId'] as int;
+    final imagePath = product['imagePath'] as String?;
     final newItem = MenuItemModel(
       itemsName: '$name (نسخة)',
       price: price,
       categoryID: categoryId,
+      imagePath: imagePath,
     );
     await controller.addMenuItem(newItem);
   }
@@ -608,6 +724,9 @@ class MenuItemView extends GetView<MenuItemController> {
     final priceController = TextEditingController(
       text: (product['price'] as num).toString(),
     );
+    final imgController = TextEditingController(
+      text: product['imagePath'] as String? ?? '',
+    );
     int selectedCatId = product['categoryId'] as int;
 
     showDialog(
@@ -616,51 +735,105 @@ class MenuItemView extends GetView<MenuItemController> {
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('تعديل المنتج'),
-        content: SizedBox(
-          width: 460,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('الاسم'),
-              const SizedBox(height: 6),
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(border: OutlineInputBorder()),
-              ),
-              const SizedBox(height: 12),
-              const Text('السعر'),
-              const SizedBox(height: 6),
-              TextField(
-                controller: priceController,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                decoration: const InputDecoration(border: OutlineInputBorder()),
-              ),
-              const SizedBox(height: 12),
-              const Text('الفئة'),
-              const SizedBox(height: 6),
-              Obx(() {
-                final cats = controller.allCategories;
-                return DropdownButtonFormField<int>(
-                  value: selectedCatId,
-                  items: cats
-                      .map(
-                        (c) => DropdownMenuItem<int>(
-                          value: c.categoryID!,
-                          child: Text(c.categoryName),
+        content: StatefulBuilder(
+          builder: (context, setState) {
+            final cats = controller.allCategories;
+            return SizedBox(
+              width: 460,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('الاسم'),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: nameController,
+                      decoration: const InputDecoration(border: OutlineInputBorder()),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text('السعر'),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: priceController,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      decoration: const InputDecoration(border: OutlineInputBorder()),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text('الفئة'),
+                    const SizedBox(height: 6),
+                    DropdownButtonFormField<int>(
+                      value: selectedCatId,
+                      items: cats
+                          .map(
+                            (c) => DropdownMenuItem<int>(
+                              value: c.categoryID!,
+                              child: Text(c.categoryName),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (v) => selectedCatId = v ?? selectedCatId,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text('صورة المنتج (رابط أو مسار محلي)'),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: imgController,
+                            decoration: const InputDecoration(
+                              hintText: 'رابط الصورة أو مسار محلي',
+                              border: OutlineInputBorder(),
+                            ),
+                            onChanged: (_) => setState(() {}),
+                          ),
                         ),
-                      )
-                      .toList(),
-                  onChanged: (v) => selectedCatId = v ?? selectedCatId,
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                  ),
-                );
-              }),
-            ],
-          ),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          onPressed: () async {
+                            final result = await FilePicker.platform.pickFiles(
+                              type: FileType.image,
+                            );
+                            if (result != null && result.files.single.path != null) {
+                              imgController.text = result.files.single.path!;
+                              setState(() {});
+                            }
+                          },
+                          icon: const Icon(Icons.folder_open),
+                          tooltip: 'تصفح من جهازك',
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    if (imgController.text.trim().isNotEmpty) ...[
+                      const Text('معاينة الصورة:'),
+                      const SizedBox(height: 6),
+                      Center(
+                        child: Container(
+                          width: double.infinity,
+                          height: 120,
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: buildAppImage(imgController.text.trim()),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            );
+          },
         ),
         actions: [
           TextButton(
@@ -671,6 +844,7 @@ class MenuItemView extends GetView<MenuItemController> {
             onPressed: () async {
               final name = nameController.text.trim();
               final price = double.tryParse(priceController.text.trim()) ?? -1;
+              final image = imgController.text.trim();
               if (name.isEmpty || price <= 0) {
                 AppDialogs.show(
                   'تنبيه',
@@ -683,6 +857,7 @@ class MenuItemView extends GetView<MenuItemController> {
                 itemsName: name,
                 price: price,
                 categoryID: selectedCatId,
+                imagePath: image.isEmpty ? null : image,
               );
               Navigator.of(context).pop();
               await controller.updateMenuItem(updated);
