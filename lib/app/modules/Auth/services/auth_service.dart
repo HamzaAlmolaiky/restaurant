@@ -1,6 +1,7 @@
 // file: services/auth_service.dart
 import 'package:get/get.dart';
 import '../../../helpers/database_helper.dart';
+import '../../../helpers/password_hasher.dart';
 import '../../Shift/models/shift_model.dart';
 import '../../Shift/services/shift_service.dart';
 import '../../Users/models/user_model.dart';
@@ -63,10 +64,32 @@ class AuthService extends GetxService {
     final db = await DatabaseHelper.instance.database;
     final maps = await db.query(
       'Users',
-      where: 'Username = ? AND Password = ? AND IsActive = 1',
-      whereArgs: [u, p],
+      where: 'Username = ? AND IsActive = 1',
+      whereArgs: [u],
       limit: 1,
     );
-    return maps.isNotEmpty ? UserModel.fromMap(maps.first) : null;
+    if (maps.isEmpty) return null;
+
+    final user = UserModel.fromMap(maps.first);
+    if (!PasswordHasher.verify(p, user.password)) return null;
+
+    final updates = <String, Object?>{
+      'LastLogin': DateTime.now().toIso8601String(),
+    };
+    if (!PasswordHasher.isHashed(user.password)) {
+      updates['Password'] = PasswordHasher.hash(p);
+    }
+
+    await db.update(
+      'Users',
+      updates,
+      where: 'UserID = ?',
+      whereArgs: [user.userID],
+    );
+
+    return user.copyWith(
+      password: updates['Password'] as String? ?? user.password,
+      lastLogin: updates['LastLogin'] as String?,
+    );
   }
 }

@@ -35,38 +35,45 @@ class CustomerPaymentView extends GetView<CustomerPaymentController> {
         ),
       ],
       // --- قسم الإحصائيات ---
-      statisticsWidget: StatisticsRow(
-        children: [
-          StatisticsCard(
-            title: 'إجمالي المدفوعات',
-            value: '89,340 ريال',
-            icon: Icons.payments,
-            color: const Color(0xFF10B981),
-            subtitle: 'هذا الشهر',
-          ),
-          StatisticsCard(
-            title: 'المدفوعات المعلقة',
-            value: '12,450 ريال',
-            icon: Icons.pending,
-            color: const Color(0xFFF59E0B),
-            subtitle: '23 فاتورة',
-          ),
-          StatisticsCard(
-            title: 'المدفوعات اليوم',
-            value: '5,680 ريال',
-            icon: Icons.today,
-            color: const Color(0xFF3B82F6),
-            subtitle: '14 عملية',
-          ),
-          StatisticsCard(
-            title: 'متوسط الدفعة',
-            value: '245 ريال',
-            icon: Icons.analytics,
-            color: const Color(0xFF8B5CF6),
-            subtitle: 'آخر 30 يوم',
-          ),
-        ],
-      ),
+      statisticsWidget: Obx(() {
+        final stats = controller.paymentStats;
+        final total = (stats['totalAmount'] as num?)?.toDouble() ?? 0.0;
+        final todayTotal = (stats['todayAmount'] as num?)?.toDouble() ?? 0.0;
+        final count = (stats['total'] as num?)?.toInt() ?? 0;
+        final avg = count > 0 ? (total / count) : 0.0;
+        return StatisticsRow(
+          children: [
+            StatisticsCard(
+              title: 'إجمالي المدفوعات',
+              value: '${total.toStringAsFixed(0)} ريال',
+              icon: Icons.payments,
+              color: const Color(0xFF10B981),
+              subtitle: 'الإجمالي الكلي',
+            ),
+            StatisticsCard(
+              title: 'عدد الدفعات',
+              value: '$count دفعة',
+              icon: Icons.format_list_numbered,
+              color: const Color(0xFFF59E0B),
+              subtitle: 'إجمالي العمليات',
+            ),
+            StatisticsCard(
+              title: 'المدفوعات اليوم',
+              value: '${todayTotal.toStringAsFixed(0)} ريال',
+              icon: Icons.today,
+              color: const Color(0xFF3B82F6),
+              subtitle: 'إجمالي اليوم',
+            ),
+            StatisticsCard(
+              title: 'متوسط الدفعة',
+              value: '${avg.toStringAsFixed(0)} ريال',
+              icon: Icons.analytics,
+              color: const Color(0xFF8B5CF6),
+              subtitle: 'متوسط إجمالي',
+            ),
+          ],
+        );
+      }),
       // --- قسم الفلاتر ---
       filterWidgets: [
         SearchTextField(
@@ -256,9 +263,8 @@ class CustomerPaymentView extends GetView<CustomerPaymentController> {
             flex: 1,
             child: PopupMenuButton<String>(
               icon: const Icon(Icons.more_vert, color: Color(0xFF6B7280)),
-              onSelected: (String value) {
-                // Handle action
-              },
+              onSelected: (String action) =>
+                  _handlePaymentAction(action, payment),
               itemBuilder: (BuildContext context) => const [
                 PopupMenuItem(
                   value: 'view',
@@ -275,26 +281,170 @@ class CustomerPaymentView extends GetView<CustomerPaymentController> {
                   ),
                 ),
                 PopupMenuItem(
-                  value: 'receipt',
+                  value: 'complete',
                   child: Row(
                     children: [
-                      Icon(Icons.receipt, size: 16, color: Color(0xFF10B981)),
+                      Icon(
+                        Icons.check_circle,
+                        size: 16,
+                        color: Color(0xFF10B981),
+                      ),
                       SizedBox(width: 8),
-                      Text('طباعة الإيصال'),
+                      Text('تعيين مكتمل'),
                     ],
                   ),
                 ),
                 PopupMenuItem(
-                  value: 'refund',
+                  value: 'reject',
                   child: Row(
                     children: [
-                      Icon(Icons.undo, size: 16, color: Color(0xFFF59E0B)),
+                      Icon(Icons.cancel, size: 16, color: Color(0xFFF59E0B)),
                       SizedBox(width: 8),
-                      Text('استرداد'),
+                      Text('رفض الدفعة'),
+                    ],
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.delete,
+                        size: 16,
+                        color: Color(0xFFEF4444),
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        'حذف',
+                        style: TextStyle(color: Color(0xFFEF4444)),
+                      ),
                     ],
                   ),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _handlePaymentAction(
+    String action,
+    Map<String, dynamic> payment,
+  ) {
+    final id = payment['id'] ?? payment['PaymentID'] ?? 0;
+    switch (action) {
+      case 'view':
+        Get.dialog(
+          AlertDialog(
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Row(
+              children: [
+                Icon(Icons.payment, color: Color(0xFF10B981)),
+                SizedBox(width: 8),
+                Text('تفاصيل الدفعة'),
+              ],
+            ),
+            content: SizedBox(
+              width: 400,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _detailRow('رقم الدفعة',
+                      (payment['payment_number'] ?? '-').toString()),
+                  _detailRow(
+                      'العميل', (payment['customer_name'] ?? '-').toString()),
+                  _detailRow(
+                      'رقم الطلب', (payment['order_number'] ?? '-').toString()),
+                  _detailRow('المبلغ',
+                      '${payment['amount'] ?? 0} ريال'),
+                  _detailRow('طريقة الدفع',
+                      (payment['payment_method'] ?? '-').toString()),
+                  _detailRow(
+                      'الحالة', (payment['status'] ?? '-').toString()),
+                  _detailRow(
+                      'التاريخ',
+                      (payment['created_at'] ??
+                              payment['payment_date'] ??
+                              '-')
+                          .toString()
+                          .split('T')
+                          .first),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Get.back(),
+                child: const Text('إغلاق'),
+              ),
+            ],
+          ),
+        );
+        break;
+      case 'complete':
+        if (id != 0) {
+          controller.updatePaymentStatus(id, 'مكتمل');
+        }
+        break;
+      case 'reject':
+        if (id != 0) {
+          controller.updatePaymentStatus(id, 'مرفوض');
+        }
+        break;
+      case 'delete':
+        if (id != 0) {
+          Get.dialog(
+            AlertDialog(
+              title: const Text('تأكيد الحذف'),
+              content: const Text(
+                  'هل أنت متأكد من حذف هذه الدفعة؟ لا يمكن التراجع.'),
+              actions: [
+                TextButton(
+                  onPressed: () => Get.back(),
+                  child: const Text('إلغاء'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    Get.back();
+                    controller.deletePayment(id);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFEF4444),
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('حذف'),
+                ),
+              ],
+            ),
+          );
+        }
+        break;
+    }
+  }
+
+  Widget _detailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 110,
+            child: Text(
+              '$label:',
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF6B7280),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(color: Color(0xFF1F2937)),
             ),
           ),
         ],
@@ -333,51 +483,140 @@ class CustomerPaymentView extends GetView<CustomerPaymentController> {
   }
 
   void _showAddPaymentDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('إضافة دفعة جديدة'),
-          content: const SizedBox(
-            width: 400,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  decoration: InputDecoration(
-                    labelText: 'العميل',
-                    border: OutlineInputBorder(),
+    final formKey = GlobalKey<FormState>();
+    final customerNameCtrl = TextEditingController();
+    final orderNumberCtrl = TextEditingController();
+    final amountCtrl = TextEditingController();
+    final methodNotifier = ValueNotifier<String>('نقدي');
+    final statusNotifier = ValueNotifier<String>('مكتمل');
+
+    Get.dialog(
+      AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.add_card, color: Color(0xFF10B981)),
+            SizedBox(width: 8),
+            Text('إضافة دفعة جديدة'),
+          ],
+        ),
+        content: SizedBox(
+          width: 440,
+          child: Form(
+            key: formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: customerNameCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'اسم العميل',
+                      prefixIcon: Icon(Icons.person_outline),
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (v) =>
+                        (v == null || v.trim().isEmpty) ? 'اسم العميل مطلوب' : null,
                   ),
-                ),
-                SizedBox(height: 16),
-                TextField(
-                  decoration: InputDecoration(
-                    labelText: 'رقم الطلب',
-                    border: OutlineInputBorder(),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: orderNumberCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'رقم الطلب (اختياري)',
+                      prefixIcon: Icon(Icons.receipt_long),
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.number,
                   ),
-                ),
-                SizedBox(height: 16),
-                TextField(
-                  decoration: InputDecoration(
-                    labelText: 'المبلغ',
-                    border: OutlineInputBorder(),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: amountCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'المبلغ',
+                      prefixIcon: Icon(Icons.attach_money),
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) return 'المبلغ مطلوب';
+                      if (double.tryParse(v.trim()) == null) {
+                        return 'أدخل قيمة صحيحة';
+                      }
+                      return null;
+                    },
                   ),
-                ),
-              ],
+                  const SizedBox(height: 12),
+                  ValueListenableBuilder<String>(
+                    valueListenable: methodNotifier,
+                    builder: (_, method, __) =>
+                        DropdownButtonFormField<String>(
+                      value: method,
+                      decoration: const InputDecoration(
+                        labelText: 'طريقة الدفع',
+                        prefixIcon: Icon(Icons.credit_card),
+                        border: OutlineInputBorder(),
+                      ),
+                      items: ['نقدي', 'بطاقة', 'تحويل', 'محفظة إلكترونية']
+                          .map((e) =>
+                              DropdownMenuItem(value: e, child: Text(e)))
+                          .toList(),
+                      onChanged: (v) => methodNotifier.value = v ?? method,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ValueListenableBuilder<String>(
+                    valueListenable: statusNotifier,
+                    builder: (_, status, __) =>
+                        DropdownButtonFormField<String>(
+                      value: status,
+                      decoration: const InputDecoration(
+                        labelText: 'الحالة',
+                        prefixIcon: Icon(Icons.flag_outlined),
+                        border: OutlineInputBorder(),
+                      ),
+                      items: ['مكتمل', 'معلق', 'مرفوض']
+                          .map((e) =>
+                              DropdownMenuItem(value: e, child: Text(e)))
+                          .toList(),
+                      onChanged: (v) => statusNotifier.value = v ?? status,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('إلغاء'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: const Text('إلغاء'),
+          ),
+          ElevatedButton.icon(
+            icon: const Icon(Icons.save, size: 18),
+            label: const Text('حفظ'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF10B981),
+              foregroundColor: Colors.white,
             ),
-            ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('حفظ'),
-            ),
-          ],
-        );
-      },
+            onPressed: () {
+              if (!(formKey.currentState?.validate() ?? false)) return;
+              final paymentData = {
+                'customer_name': customerNameCtrl.text.trim(),
+                'order_number': orderNumberCtrl.text.trim().isEmpty
+                    ? '-'
+                    : orderNumberCtrl.text.trim(),
+                'amount': double.parse(amountCtrl.text.trim()),
+                'payment_method': methodNotifier.value,
+                'status': statusNotifier.value,
+                'payment_date': DateTime.now().toIso8601String(),
+              };
+              controller.addPayment(paymentData);
+              Get.back();
+            },
+          ),
+        ],
+      ),
     );
   }
 }

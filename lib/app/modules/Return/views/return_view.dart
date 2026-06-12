@@ -593,6 +593,7 @@ class ReturnView extends GetView<ReturnController> {
     );
   }
 
+  // ignore: unused_element
   void _showProcessReturnDialog(OrderReturnModel returnModel) {
     Get.dialog(
       AlertDialog(

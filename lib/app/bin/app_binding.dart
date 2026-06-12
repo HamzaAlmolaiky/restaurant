@@ -82,7 +82,7 @@ class AppBinding extends Bindings {
       permanent: true,
     );
     Get.put<OrderController>(OrderController(Get.find()), permanent: true);
-    Get.put(AuthService());
+    Get.put<AuthService>(AuthService(), permanent: true);
 
     // Order Services
     Get.put<SupplierService>(SupplierService.instance, permanent: true);

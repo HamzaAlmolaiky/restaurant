@@ -13,6 +13,28 @@ class SupplierController extends GetxController {
   var isLoading = false.obs;
   final stats = Rx<SupplierStatsModel?>(null);
 
+  // متغيرات الفلترة
+  var searchQuery = ''.obs;
+  var typeFilter = 'جميع الأنواع'.obs;
+  var statusFilter = 'جميع الحالات'.obs;
+  var ratingFilter = 'جميع التقييمات'.obs;
+
+  /// القائمة المفلترة
+  List<SupplierModel> get filteredSuppliers {
+    final q = searchQuery.value.trim().toLowerCase();
+    final status = statusFilter.value;
+    return suppliers.where((s) {
+      final matchSearch = q.isEmpty ||
+          (s.supplierName ?? '').toLowerCase().contains(q) ||
+          s.itemsName.toLowerCase().contains(q);
+      final matchStatus = status == 'جميع الحالات' ||
+          (status == 'نشط' && s.status == 'Unpaid') ||
+          (status == 'غير نشط' && s.status == 'Paid') ||
+          s.status == status;
+      return matchSearch && matchStatus;
+    }).toList();
+  }
+
   // Snackbar helpers for unified UX
   void _showSuccess(String message) {
     AppDialogs.showSuccess('', message);

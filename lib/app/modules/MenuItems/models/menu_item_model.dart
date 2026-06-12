@@ -7,6 +7,7 @@ class MenuItemModel {
   final String itemsName;
   final double price;
   final int categoryID;
+  final String? imagePath;
 
   // خاصية إضافية لتخزين كائن الفئة المرتبطة
   // هذه الخاصية تملأ فقط عند استخدام استعلامات JOIN
@@ -17,6 +18,7 @@ class MenuItemModel {
     required this.itemsName,
     required this.price,
     required this.categoryID,
+    this.imagePath,
     this.category, // إضافة الخاصية الجديدة للمُنشئ
   });
 
@@ -29,6 +31,7 @@ class MenuItemModel {
       itemsName: map['ItemsName'],
       price: (map['Price'] as num).toDouble(),
       categoryID: map['CategoryID'],
+      imagePath: map['ImagePath'] as String?,
     );
   }
 
@@ -38,6 +41,7 @@ class MenuItemModel {
       'ItemsName': itemsName,
       'Price': price,
       'CategoryID': categoryID,
+      'ImagePath': imagePath,
     };
   }
 }

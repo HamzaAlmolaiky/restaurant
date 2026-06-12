@@ -11,7 +11,6 @@ import '../../../widgets/filter_chips_bar.dart';
 import '../../../widgets/info_card.dart';
 import '../../../widgets/primary_button.dart';
 import '../../../widgets/dialogs/custom_form_dialog.dart';
-import '../../../widgets/reactive_grid_section.dart';
 import '../../../widgets/search_text_field.dart';
 import '../../../widgets/statistics_card.dart';
 import '../../../widgets/statistics_row.dart';
@@ -116,21 +115,29 @@ class CustomerView extends GetView<CustomerController> {
         ),
       ],
 
-      // ٤. استخدام ReactiveGridSection لإدارة حالات الشبكة تلقائيًا
-      body: ReactiveGridSection<CustomerModel>(
-        // استبدل Customer بنوع الموديل الخاص بك
-        isLoading: controller.isLoading,
-        // items: controller.filteredCustomers,
-        items: controller.customers,
-        emptyText: 'لا يوجد عملاء لعرضهم حالياً. ابدأ بإضافة عميل جديد.',
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 4,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
-          childAspectRatio: 0.85,
-        ),
-        itemBuilder: (context, customer) => _buildCustomerCard(customer),
-      ),
+      // ٤. عرض الشبكة بشكل تفاعلي (filteredCustomers هي getter عادي يحتاج Obx)
+      body: Obx(() {
+        final items = controller.filteredCustomers;
+        if (controller.isLoading.value && items.isEmpty) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (items.isEmpty) {
+          return const Center(
+            child: Text('لا يوجد عملاء لعرضهم حاليًا. ابدأ بإضافة عميل جديد.'),
+          );
+        }
+        return GridView.builder(
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 4,
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
+            childAspectRatio: 0.85,
+          ),
+          itemCount: items.length,
+          itemBuilder: (context, index) => _buildCustomerCard(items[index]),
+        );
+      }),
     );
   }
 

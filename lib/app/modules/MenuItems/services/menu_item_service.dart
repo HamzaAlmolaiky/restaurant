@@ -18,6 +18,7 @@ class MenuItemService {
         ? MenuCategoryModel(
             categoryID: map['CategoryID'],
             categoryName: map['CategoryName'],
+            imagePath: map['CategoryImagePath'] as String?,
           )
         : null;
 
@@ -27,6 +28,7 @@ class MenuItemService {
       itemsName: map['ItemsName'],
       price: (map['Price'] as num).toDouble(),
       categoryID: map['CategoryID'],
+      imagePath: map['ImagePath'] as String?,
       category: category,
     );
   }
@@ -35,7 +37,7 @@ class MenuItemService {
   Future<List<MenuItemModel>> getAllMenuItems() async {
     final db = await DatabaseHelper.instance.database;
     const sql = '''
-      SELECT m.*, c.CategoryName 
+      SELECT m.*, c.CategoryName, c.ImagePath as CategoryImagePath 
       FROM MenuItems m 
       LEFT JOIN MenuCategory c ON m.CategoryID = c.CategoryID
     ''';
@@ -47,7 +49,7 @@ class MenuItemService {
   Future<List<MenuItemModel>> getMenuItemsByCategory(int categoryId) async {
     final db = await DatabaseHelper.instance.database;
     const sql = '''
-      SELECT m.*, c.CategoryName 
+      SELECT m.*, c.CategoryName, c.ImagePath as CategoryImagePath 
       FROM MenuItems m 
       LEFT JOIN MenuCategory c ON m.CategoryID = c.CategoryID 
       WHERE m.CategoryID = ?
@@ -60,7 +62,7 @@ class MenuItemService {
   Future<MenuItemModel?> getMenuItemById(int id) async {
     final db = await DatabaseHelper.instance.database;
     const sql = '''
-      SELECT m.*, c.CategoryName 
+      SELECT m.*, c.CategoryName, c.ImagePath as CategoryImagePath 
       FROM MenuItems m 
       LEFT JOIN MenuCategory c ON m.CategoryID = c.CategoryID 
       WHERE m.MenuItemsID = ?
@@ -125,7 +127,7 @@ class MenuItemService {
   Future<List<MenuItemModel>> searchMenuItems(String searchTerm) async {
     final db = await DatabaseHelper.instance.database;
     const sql = '''
-      SELECT m.*, c.CategoryName 
+      SELECT m.*, c.CategoryName, c.ImagePath as CategoryImagePath 
       FROM MenuItems m 
       LEFT JOIN MenuCategory c ON m.CategoryID = c.CategoryID 
       WHERE m.ItemsName LIKE ?

@@ -356,4 +356,17 @@ class MenuItemController extends GetxController {
       isLoading.value = false;
     }
   }
+
+  // --- المفضلة التفاعلية ---
+  var favoriteItemIds = <int>{}.obs;
+
+  void toggleFavorite(int itemId) {
+    if (favoriteItemIds.contains(itemId)) {
+      favoriteItemIds.remove(itemId);
+      AppDialogs.show('المفضلة', 'تم إزالة المنتج من المفضلة');
+    } else {
+      favoriteItemIds.add(itemId);
+      AppDialogs.show('المفضلة', 'تم إضافة المنتج إلى المفضلة');
+    }
+  }
 }

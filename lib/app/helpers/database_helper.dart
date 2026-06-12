@@ -7,7 +7,7 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 
 /// خدمة لإدارة قاعدة البيانات
@@ -16,6 +16,8 @@ import 'package:path/path.dart';
 /// بالإضافة إلى وظائف إضافية مثل الحصول على قاعدة البيانات الحالية.
 
 class DatabaseHelper {
+  static const int _dbVersion = 2;
+
   /// 1. Singleton Pattern: يضمن وجود نسخة واحدة فقط من هذا الكلاس.
   /// هذا هو بديل الكلاس الـ static في C#.
   static final DatabaseHelper instance = DatabaseHelper._init();
@@ -62,7 +64,19 @@ class DatabaseHelper {
     /// فتح قاعدة البيانات. إذا لم تكن موجودة، سيتم استدعاء `onCreate`.
     return openDatabase(
       path,
-      version: 1,
+      version: _dbVersion,
+      onConfigure: (db) async {
+        await db.execute('PRAGMA foreign_keys = ON');
+      },
+      onCreate: (db, version) async {
+        await _ensureSchema(db);
+        await _recordSchemaVersion(db, _dbVersion);
+        await _recordSchemaVersion(db, version);
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        await _ensureSchema(db);
+        await _recordSchemaVersion(db, newVersion);
+      },
       onOpen: (db) async {
         // تفعيل قيود العلاقات Foreign Keys في SQLite
         await db.execute('PRAGMA foreign_keys = ON');
@@ -194,6 +208,24 @@ class DatabaseHelper {
       ''');
     }
 
+    // MenuItems table upgrade: add ImagePath column
+    if (await _tableExists(db, 'MenuItems')) {
+      final info = await _pragmaTableInfo(db, 'MenuItems');
+      if (!_hasColumn(info, 'ImagePath')) {
+        await db.execute("ALTER TABLE MenuItems ADD COLUMN ImagePath TEXT");
+        print("Schema Update: Added ImagePath column to MenuItems");
+      }
+    }
+
+    // MenuCategory table upgrade: add ImagePath column
+    if (await _tableExists(db, 'MenuCategory')) {
+      final info = await _pragmaTableInfo(db, 'MenuCategory');
+      if (!_hasColumn(info, 'ImagePath')) {
+        await db.execute("ALTER TABLE MenuCategory ADD COLUMN ImagePath TEXT");
+        print("Schema Update: Added ImagePath column to MenuCategory");
+      }
+    }
+
     // Users table
     if (await _tableExists(db, 'Users')) {
       final info = await _pragmaTableInfo(db, 'Users');
@@ -294,6 +326,7 @@ class DatabaseHelper {
       await db.execute('''
         CREATE TABLE IF NOT EXISTS CustomerPayments (
           PaymentID INTEGER PRIMARY KEY AUTOINCREMENT,
+          PaymentNumber TEXT, -- أضفنا هذا العمود هنا
           CustomerID INTEGER NOT NULL,
           ShiftID INTEGER NOT NULL,
           UserID INTEGER NOT NULL,
@@ -305,18 +338,16 @@ class DatabaseHelper {
       ''');
     } else {
       final info = await _pragmaTableInfo(db, 'CustomerPayments');
+      // التأكد من إضافة العمود في حال كان الجدول منشأ قديماً بدونه
+      if (!_hasColumn(info, 'PaymentNumber')) {
+        await db.execute("ALTER TABLE CustomerPayments ADD COLUMN PaymentNumber TEXT");
+      }
+      
       if (!_hasColumn(info, 'PaymentID') && _hasColumn(info, 'PaymentId')) {
-        // لا يمكن إعادة تسمية الأعمدة بسهولة في SQLite بدون جدول وسيط
-        // نضمن على الأقل وجود العمود القياسي عبر إنشاء عمود جديد إذا لزم
-        await db.execute(
-          "ALTER TABLE CustomerPayments ADD COLUMN PaymentID INTEGER",
-        );
-        // ملاحظة: يمكن لاحقاً ترحيل البيانات و/أو إنشاء View للتوافق
+        await db.execute("ALTER TABLE CustomerPayments ADD COLUMN PaymentID INTEGER");
       }
       if (!_hasColumn(info, 'AmountReceived')) {
-        await db.execute(
-          "ALTER TABLE CustomerPayments ADD COLUMN AmountReceived REAL NOT NULL DEFAULT 0",
-        );
+        await db.execute("ALTER TABLE CustomerPayments ADD COLUMN AmountReceived REAL NOT NULL DEFAULT 0");
       }
     }
 
@@ -927,6 +958,69 @@ class DatabaseHelper {
       if (!_hasColumn(info, 'RoleID')) {
         await db.execute("ALTER TABLE Users ADD COLUMN RoleID INTEGER");
       }
+    }
+    await _createCompatibilityViews(db);
+  }
+
+  Future<void> _recordSchemaVersion(Database db, int version) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS Schema_Migrations (
+        Version INTEGER PRIMARY KEY,
+        AppliedAt TEXT NOT NULL
+      )
+    ''');
+    await db.insert('Schema_Migrations', {
+      'Version': version,
+      'AppliedAt': DateTime.now().toIso8601String(),
+    }, conflictAlgorithm: ConflictAlgorithm.ignore);
+  }
+
+  Future<void> _createCompatibilityViews(Database db) async {
+    if (await _tableExists(db, 'MenuItems') &&
+        !await _tableExists(db, 'Menu_Items')) {
+      await db.execute('''
+        CREATE VIEW IF NOT EXISTS Menu_Items AS
+        SELECT
+          MenuItemsID AS ItemID,
+          MenuItemsID AS MenuItemsID,
+          ItemsName AS ItemName,
+          ItemsName AS ItemsName,
+          Price,
+          CategoryID,
+          ImagePath
+        FROM MenuItems
+      ''');
+    }
+
+    if (await _tableExists(db, 'MenuCategory') &&
+        !await _tableExists(db, 'Menu_Category')) {
+      await db.execute('''
+        CREATE VIEW IF NOT EXISTS Menu_Category AS
+        SELECT
+          CategoryID,
+          CategoryName,
+          CategoryName AS Name,
+          ImagePath
+        FROM MenuCategory
+      ''');
+    }
+
+    if (await _tableExists(db, 'OrderItems') &&
+        !await _tableExists(db, 'Order_Items')) {
+      await db.execute('''
+        CREATE VIEW IF NOT EXISTS Order_Items AS
+        SELECT
+          OrderItemsID AS OrderItemID,
+          OrderItemsID AS OrderItemsID,
+          OrderID,
+          ItemsID AS ItemID,
+          ItemsID AS MenuItemID,
+          ItemsID AS ItemsID,
+          Quantity,
+          Price,
+          Total
+        FROM OrderItems
+      ''');
     }
   }
 

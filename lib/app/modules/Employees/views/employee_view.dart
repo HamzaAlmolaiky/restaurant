@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import '../../../helpers/app_dialogs.dart';
 import '../../../widgets/filter_bar.dart';
 import '../../../widgets/page_header.dart';
 import '../../../widgets/primary_button.dart';
@@ -11,6 +12,7 @@ import '../../../widgets/statistics_row.dart';
 import '../../../widgets/styled_dropdown_form_field.dart';
 import '../controllers/employee_controller.dart';
 import '../models/employee_model.dart';
+
 
 class EmployeeView extends GetView<EmployeeController> {
   const EmployeeView({super.key});
@@ -28,7 +30,7 @@ class EmployeeView extends GetView<EmployeeController> {
             actions: [
               PrimaryButton(
                 text: 'موظف جديد',
-                onPressed: () => _showAddEmployeeDialog(context),
+                onPressed: () => _showEmployeeFormDialog(context),
                 icon: Icons.person_add,
                 backgroundColor: const Color(0xFF8B5CF6),
               ),
@@ -83,57 +85,60 @@ class EmployeeView extends GetView<EmployeeController> {
           /// Search and Filters
           FilterBar(
             children: [
+              // ١. حقل البحث - مفعّل
               SearchTextField(
                 hintText: 'البحث عن موظف...',
-                onChanged: (value) {
-                  /* controller.searchQuery.value = value; */
-                },
+                onChanged: controller.searchEmployees,
               ),
 
-              // ٢. قائمة فلترة القسم
-              StyledDropdownFormField<String>(
-                labelText: 'القسم',
-                value: 'جميع الأقسام', // controller.departmentFilter.value
-                items:
-                    ['جميع الأقسام', 'المطبخ', 'الخدمة', 'الإدارة', 'التوصيل']
-                        .map(
-                          (item) =>
-                              DropdownMenuItem(value: item, child: Text(item)),
-                        )
-                        .toList(),
-                onChanged: (newValue) {
-                  /* controller.departmentFilter.value = newValue; */
-                },
+              // ٢. قائمة فلترة القسم - مربوطة بالمتحكم
+              Obx(
+                () => StyledDropdownFormField<String>(
+                  labelText: 'القسم',
+                  value: controller.selectedDepartment.value,
+                  items:
+                      ['الكل', 'المطبخ', 'الخدمة', 'الإدارة', 'التوصيل']
+                          .map(
+                            (item) =>
+                                DropdownMenuItem(value: item, child: Text(item)),
+                          )
+                          .toList(),
+                  onChanged: (newValue) {
+                    if (newValue != null) controller.filterByDepartment(newValue);
+                  },
+                ),
               ),
 
-              // ٣. قائمة فلترة الحالة
-              StyledDropdownFormField<String>(
-                labelText: 'الحالة',
-                value: 'جميع الحالات', // controller.statusFilter.value
-                items: ['جميع الحالات', 'نشط', 'في إجازة', 'متوقف']
-                    .map(
-                      (item) =>
-                          DropdownMenuItem(value: item, child: Text(item)),
-                    )
-                    .toList(),
-                onChanged: (newValue) {
-                  /* controller.statusFilter.value = newValue; */
-                },
+              // ٣. قائمة فلترة الحالة - مربوطة بالمتحكم
+              Obx(
+                () => StyledDropdownFormField<String>(
+                  labelText: 'الحالة',
+                  value: controller.selectedStatus.value,
+                  items: ['الكل', 'نشط', 'غير نشط']
+                      .map(
+                        (item) =>
+                            DropdownMenuItem(value: item, child: Text(item)),
+                      )
+                      .toList(),
+                  onChanged: (newValue) {
+                    if (newValue != null) controller.filterByStatus(newValue);
+                  },
+                ),
               ),
 
-              // ٤. قائمة فلترة الوردية
-              StyledDropdownFormField<String>(
-                labelText: 'الوردية',
-                value: 'جميع الورديات', // controller.shiftFilter.value
-                items: ['جميع الورديات', 'صباحية', 'مسائية', 'ليلية']
-                    .map(
-                      (item) =>
-                          DropdownMenuItem(value: item, child: Text(item)),
-                    )
-                    .toList(),
-                onChanged: (newValue) {
-                  /* controller.shiftFilter.value = newValue; */
-                },
+              // ٤. زر تحديث البيانات
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.withOpacity(0.2)),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: IconButton(
+                  onPressed: controller.loadEmployeesFromDB,
+                  icon: const Icon(Icons.refresh, color: Color(0xFF8B5CF6)),
+                  tooltip: 'تحديث البيانات',
+                ),
               ),
             ],
           ),
@@ -303,10 +308,10 @@ class EmployeeView extends GetView<EmployeeController> {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        Expanded(
+                         Expanded(
                           child: _buildActionButton(
                             icon: Icons.edit_outlined,
-                            onTap: () => _editEmployee(employee),
+                            onTap: () => _editEmployee(Get.context!, employee),
                             color: Colors.grey[600]!,
                           ),
                         ),
@@ -348,7 +353,16 @@ class EmployeeView extends GetView<EmployeeController> {
     );
   }
 
-  void _showAddEmployeeDialog(BuildContext context) {
+  void _showEmployeeFormDialog(BuildContext context, {EmployeeModel? employee}) {
+    if (employee != null) {
+      controller.fillFormForEdit(employee);
+    } else {
+      controller.nameController.clear();
+      controller.phoneController.clear();
+      controller.positionController.clear();
+      controller.salaryController.clear();
+    }
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -356,16 +370,58 @@ class EmployeeView extends GetView<EmployeeController> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          title: const Row(
+          title: Row(
             children: [
-              Icon(Icons.person_add, color: Color(0xFF8B5CF6)),
-              SizedBox(width: 12),
-              Text('موظف جديد'),
+              Icon(
+                employee == null ? Icons.person_add : Icons.edit,
+                color: const Color(0xFF8B5CF6),
+              ),
+              const SizedBox(width: 12),
+              Text(employee == null ? 'موظف جديد' : 'تعديل موظف'),
             ],
           ),
-          content: const SizedBox(
+          content: SizedBox(
             width: 400,
-            child: Text('سيتم إضافة نموذج إنشاء موظف جديد هنا'),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: controller.nameController,
+                    decoration: const InputDecoration(
+                      labelText: 'اسم الموظف',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: controller.phoneController,
+                    decoration: const InputDecoration(
+                      labelText: 'رقم الهاتف',
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.phone,
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: controller.positionController,
+                    decoration: const InputDecoration(
+                      labelText: 'المنصب / الوظيفة',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: controller.salaryController,
+                    decoration: const InputDecoration(
+                      labelText: 'الراتب الأساسي',
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  ),
+                ],
+              ),
+            ),
           ),
           actions: [
             TextButton(
@@ -373,7 +429,7 @@ class EmployeeView extends GetView<EmployeeController> {
               child: const Text('إلغاء'),
             ),
             ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () => controller.saveEmployee(existingEmployee: employee),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF8B5CF6),
                 foregroundColor: Colors.white,
@@ -381,7 +437,7 @@ class EmployeeView extends GetView<EmployeeController> {
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              child: const Text('إضافة'),
+              child: Text(employee == null ? 'إضافة' : 'حفظ'),
             ),
           ],
         );
@@ -431,14 +487,47 @@ class EmployeeView extends GetView<EmployeeController> {
   }
 
   void _viewEmployeeDetails(EmployeeModel employee) {
-    print('عرض تفاصيل الموظف: ${employee.name}');
+    Get.dialog(
+      AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.person, color: Color(0xFF8B5CF6)),
+            const SizedBox(width: 8),
+            const Text('تفاصيل الموظف'),
+            const Spacer(),
+            IconButton(
+              onPressed: () => Get.back(),
+              icon: const Icon(Icons.close),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('الاسم: ${employee.name}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            const SizedBox(height: 12),
+            Text('الهاتف: ${employee.phoneNumber ?? "-"}'),
+            const SizedBox(height: 8),
+            Text('المنصب: ${employee.position}'),
+            const SizedBox(height: 8),
+            Text('الراتب: ${employee.basicSalary.toStringAsFixed(2)} ريال'),
+            const SizedBox(height: 8),
+            Text('تاريخ التعيين: ${employee.hireDate.toLocal().toString().substring(0, 10)}'),
+            const SizedBox(height: 8),
+            Text('الحالة: ${employee.isActive ? "نشط" : "غير نشط"}'),
+          ],
+        ),
+      ),
+    );
   }
 
-  void _editEmployee(EmployeeModel employee) {
-    print('تعديل الموظف: ${employee.name}');
+  void _editEmployee(BuildContext context, EmployeeModel employee) {
+    _showEmployeeFormDialog(context, employee: employee);
   }
 
   void _callEmployee(String phone) {
-    print('الاتصال بالموظف: $phone');
+    AppDialogs.show('الاتصال بالموظف', 'جاري الاتصال بالرقم: $phone');
   }
 }

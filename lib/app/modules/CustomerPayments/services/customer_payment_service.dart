@@ -26,11 +26,39 @@ class CustomerPaymentService {
   // دوال أساسية وتشغيلية (CRUD)
   // -------------------------------------------------------------------
 
-  /// إضافة دفعة جديدة. يقبل خريطة (Map) لتسهيل الاستخدام من الكنترولر.
+  /// إضافة دفعة جديدة. يقبل خريطة (Map) مرنة من الكنترولر أو واجهة المستخدم.
   Future<int> addPayment(Map<String, dynamic> paymentData) async {
-    final paymentModel = CustomerPaymentModel.fromMap(paymentData);
-    return await (await _db).insert('CustomerPayments', paymentModel.toMap());
+    final db = await _db;
+    // إذا كانت البيانات تحتوي على مفاتيح قاعدة البيانات مباشرة، أدرجها مباشرة
+    if (paymentData.containsKey('CustomerID')) {
+      final model = CustomerPaymentModel.fromMap(paymentData);
+      return await db.insert('CustomerPayments', model.toMap());
+    }
+    // وإلا تعامل مع بيانات الواجهة (customer_name, amount, ...)
+    final now = DateTime.now().toIso8601String();
+    final dbMap = <String, dynamic>{
+      'CustomerID': paymentData['customer_id'] ?? 0,
+      'PaymentNumber': paymentData['payment_number'],
+      'ShiftID': paymentData['shift_id'] ?? 1,
+      'UserID': paymentData['user_id'] ?? 1,
+      'OrderID': paymentData['order_id'],
+      'AmountReceived':
+          (paymentData['amount'] as num?)?.toDouble() ?? 0.0,
+      'Notes': [
+        if (paymentData['customer_name'] != null &&
+            (paymentData['customer_name'] as String).isNotEmpty)
+          'العميل: ${paymentData['customer_name']}',
+        if (paymentData['payment_method'] != null)
+          'طريقة الدفع: ${paymentData['payment_method']}',
+        if (paymentData['order_number'] != null &&
+            paymentData['order_number'] != '-')
+          'رقم الطلب: ${paymentData['order_number']}',
+      ].join(' | '),
+      'PaymentDate': paymentData['payment_date'] ?? now,
+    };
+    return await db.insert('CustomerPayments', dbMap);
   }
+
 
   /// إضافة دفعة ككائن (Model) داخل معاملة. دالة متقدمة للاستخدام الداخلي.
   Future<int> addPaymentInTransaction(

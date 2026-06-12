@@ -20,7 +20,6 @@ import '../controllers/supplier_controller.dart';
 import '../models/supplier_model.dart';
 import '../../../widgets/dialogs/confirm_dialog.dart';
 import '../../../widgets/action_menu.dart';
-import '../../../widgets/reactive_grid_section.dart';
 
 class SupplierView extends GetView<SupplierController> {
   const SupplierView({super.key});
@@ -83,58 +82,67 @@ class SupplierView extends GetView<SupplierController> {
       filterWidgets: [
         SearchTextField(
           hintText: 'البحث في الموردين...',
-          onChanged: (v) => controller.searchSuppliers(v),
+          onChanged: (v) {
+            controller.searchQuery.value = v;
+            if (v.trim().isEmpty) controller.fetchAllSuppliers();
+          },
           focusedBorderColor: const Color(0xFF667EEA),
         ),
-        StyledDropdownFormField<String>(
-          labelText: 'النوع',
-          value: 'جميع الأنواع', // controller.typeFilter.value
-          items: ['جميع الأنواع', 'مواد غذائية', 'مشروبات', 'تجهيزات', 'خدمات']
-              .map((item) => DropdownMenuItem(value: item, child: Text(item)))
-              .toList(),
-          onChanged: (newValue) {
-            /* ... */
-          },
+        Obx(
+          () => StyledDropdownFormField<String>(
+            labelText: 'النوع',
+            value: controller.typeFilter.value,
+            items: ['جميع الأنواع', 'مواد غذائية', 'مشروبات', 'تجهيزات', 'خدمات']
+                .map((item) => DropdownMenuItem(value: item, child: Text(item)))
+                .toList(),
+            onChanged: (v) => controller.typeFilter.value = v ?? 'جميع الأنواع',
+          ),
         ),
-        StyledDropdownFormField<String>(
-          labelText: 'الحالة',
-          value: 'جميع الحالات', // controller.statusFilter.value
-          items: ['جميع الحالات', 'نشط', 'غير نشط', 'معلق']
-              .map((item) => DropdownMenuItem(value: item, child: Text(item)))
-              .toList(),
-          onChanged: (newValue) {
-            /* ... */
-          },
+        Obx(
+          () => StyledDropdownFormField<String>(
+            labelText: 'الحالة',
+            value: controller.statusFilter.value,
+            items: ['جميع الحالات', 'نشط', 'غير نشط']
+                .map((item) => DropdownMenuItem(value: item, child: Text(item)))
+                .toList(),
+            onChanged: (v) => controller.statusFilter.value = v ?? 'جميع الحالات',
+          ),
         ),
-        StyledDropdownFormField<String>(
-          labelText: 'التقييم',
-          value: 'جميع التقييمات', // controller.ratingFilter.value
-          items: ['جميع التقييمات', '5 نجوم', '4+ نجوم', '3+ نجوم', 'أقل من 3']
-              .map((item) => DropdownMenuItem(value: item, child: Text(item)))
-              .toList(),
-          onChanged: (newValue) {
-            /* ... */
-          },
+        Obx(
+          () => StyledDropdownFormField<String>(
+            labelText: 'التقييم',
+            value: controller.ratingFilter.value,
+            items: ['جميع التقييمات', '5 نجوم', '4+ نجوم', '3+ نجوم', 'أقل من 3']
+                .map((item) => DropdownMenuItem(value: item, child: Text(item)))
+                .toList(),
+            onChanged: (v) => controller.ratingFilter.value = v ?? 'جميع التقييمات',
+          ),
         ),
       ],
 
       // ===================================
       // ٣. تمرير المحتوى الرئيسي (الجسم)
       // ===================================
-      body: ReactiveGridSection<SupplierModel>(
-        // <-- تحديد نوع البيانات
-        isLoading: controller.isLoading, // تمرير المتغير التفاعلي مباشرة
-        items: controller.suppliers, // تمرير القائمة التفاعلية مباشرة
-        emptyText: 'لا توجد بيانات موردين',
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
-          childAspectRatio: 0.9,
-        ),
-        // تمرير دالة بناء البطاقة مباشرة
-        itemBuilder: (context, supplier) => _buildSupplierCard(supplier),
-      ),
+      body: Obx(() {
+        final items = controller.filteredSuppliers;
+        if (controller.isLoading.value && items.isEmpty) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (items.isEmpty) {
+          return const Center(child: Text('لا توجد بيانات موردين'));
+        }
+        return GridView.builder(
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
+            childAspectRatio: 0.9,
+          ),
+          itemCount: items.length,
+          itemBuilder: (context, index) => _buildSupplierCard(items[index]),
+        );
+      }),
     );
   }
 

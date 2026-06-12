@@ -23,8 +23,8 @@ class AdvancedReportView extends GetView<ReportController> {
           Expanded(
             child: Row(
               children: [
-                _buildAdvancedFilters(),
                 Expanded(child: _buildReportContent()),
+                _buildAdvancedFilters(),
               ],
             ),
           ),

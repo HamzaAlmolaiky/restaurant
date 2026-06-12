@@ -10,6 +10,10 @@ import '../../../widgets/statistics_card.dart';
 import '../../../widgets/statistics_row.dart';
 import '../../../widgets/styled_dropdown_form_field.dart';
 import '../controllers/expense_controller.dart';
+import '../models/expense_model.dart';
+import '../../Auth/controllers/auth_controller.dart';
+import '../../Shift/controllers/shift_controller.dart';
+import '../../../helpers/app_dialogs.dart';
 
 class ExpenseView extends GetView<ExpenseController> {
   const ExpenseView({super.key});
@@ -27,120 +31,98 @@ class ExpenseView extends GetView<ExpenseController> {
             actions: [
               PrimaryButton(
                 text: 'مصروف جديد',
-                onPressed: () => _showAddExpenseDialog(context),
+                onPressed: () => _showExpenseFormDialog(context),
                 icon: Icons.add_circle,
                 backgroundColor: const Color(0xFFF59E0B),
               ),
             ],
             // تم دمج قسم الإحصائيات هنا ليصبح جزءًا من الترويسة
-            bottomChild: StatisticsRow(
-              children: [
-                StatisticsCard(
-                  title: 'إجمالي المصروفات',
-                  value: '24,680 ريال',
-                  icon: Icons.money_off,
-                  color: const Color(0xFFEF4444),
-                  subtitle: 'هذا الشهر',
-                ),
-                StatisticsCard(
-                  title: 'متوسط يومي',
-                  value: '823 ريال',
-                  icon: Icons.trending_up,
-                  color: const Color(0xFF3B82F6),
-                  subtitle: 'متوسط المصروفات',
-                ),
-                StatisticsCard(
-                  title: 'أكبر مصروف',
-                  value: '2,500 ريال',
-                  icon: Icons.arrow_upward,
-                  color: const Color(0xFFF59E0B),
-                  subtitle: 'صيانة المعدات',
-                ),
-                StatisticsCard(
-                  title: 'عدد المصروفات',
-                  value: '89',
-                  icon: Icons.receipt_long,
-                  color: const Color(0xFF8B5CF6),
-                  subtitle: 'هذا الشهر',
-                ),
-              ],
+            bottomChild: Obx(
+              () => StatisticsRow(
+                children: [
+                  StatisticsCard(
+                    title: 'إجمالي المصروفات',
+                    value: '${controller.totalAmount.toStringAsFixed(0)} ريال',
+                    icon: Icons.money_off,
+                    color: const Color(0xFFEF4444),
+                    subtitle: 'بناءً على الفلتر الحالي',
+                  ),
+                  StatisticsCard(
+                    title: 'متوسط يومي',
+                    value: '${controller.avgDaily.toStringAsFixed(0)} ريال',
+                    icon: Icons.trending_up,
+                    color: const Color(0xFF3B82F6),
+                    subtitle: 'متوسط المصروفات',
+                  ),
+                  StatisticsCard(
+                    title: 'أكبر مصروف',
+                    value: '${controller.maxExpense.toStringAsFixed(0)} ريال',
+                    icon: Icons.arrow_upward,
+                    color: const Color(0xFFF59E0B),
+                    subtitle: 'أعلى مبلغ',
+                  ),
+                  StatisticsCard(
+                    title: 'عدد المصروفات',
+                    value: '${controller.filteredExpenses.length}',
+                    icon: Icons.receipt_long,
+                    color: const Color(0xFF8B5CF6),
+                    subtitle: 'نتيجة الفلتر',
+                  ),
+                ],
+              ),
             ),
           ),
 
           /// Filters Section
           FilterBar(
             children: [
-              // ١. حقل البحث
+              // ١. حقل البحث - مفعّل
               SearchTextField(
                 hintText: 'البحث في المصروفات...',
-                onChanged: (value) {
-                  /* controller.searchQuery.value = value; */
-                },
-                focusedBorderColor: const Color(
-                  0xFFF59E0B,
-                ), // لون مخصص لهذه الشاشة
+                onChanged: (value) => controller.searchQuery.value = value,
+                focusedBorderColor: const Color(0xFFF59E0B),
               ),
 
-              // ٢. قائمة فلترة الفئة
-              // ملاحظة: يجب ربط value و onChanged بمتغيرات في الكونترولر
-              StyledDropdownFormField<String>(
-                labelText: 'الفئة',
-                value: 'جميع الفئات', // controller.categoryFilter.value
-                items:
-                    [
-                          'جميع الفئات',
-                          'رواتب',
-                          'إيجار',
-                          'مواد خام',
-                          'صيانة',
-                          'كهرباء',
-                          'أخرى',
-                        ]
-                        .map(
-                          (item) =>
-                              DropdownMenuItem(value: item, child: Text(item)),
-                        )
-                        .toList(),
-                onChanged: (newValue) {
-                  /* controller.categoryFilter.value = newValue; */
-                },
+              // ٢. فلتر الفئة - مفعّل
+              Obx(
+                () => StyledDropdownFormField<String>(
+                  labelText: 'الفئة',
+                  value: controller.categoryFilter.value,
+                  items: [
+                    'جميع الفئات',
+                    'رواتب',
+                    'إيجار',
+                    'مواد خام',
+                    'صيانة',
+                    'كهرباء',
+                    'أخرى',
+                  ].map((item) => DropdownMenuItem(value: item, child: Text(item))).toList(),
+                  onChanged: (v) => controller.categoryFilter.value = v ?? 'جميع الفئات',
+                ),
               ),
 
-              // ٣. قائمة فلترة الحالة
-              StyledDropdownFormField<String>(
-                labelText: 'الحالة',
-                value: 'جميع الحالات', // controller.statusFilter.value
-                items: ['جميع الحالات', 'مدفوع', 'معلق', 'مرفوض']
-                    .map(
-                      (item) =>
-                          DropdownMenuItem(value: item, child: Text(item)),
-                    )
-                    .toList(),
-                onChanged: (newValue) {
-                  /* controller.statusFilter.value = newValue; */
-                },
+              // ٣. فلتر الحالة - مفعّل
+              Obx(
+                () => StyledDropdownFormField<String>(
+                  labelText: 'الحالة',
+                  value: controller.statusFilter.value,
+                  items: ['جميع الحالات', 'مدفوع', 'معلق', 'مرفوض']
+                      .map((item) => DropdownMenuItem(value: item, child: Text(item)))
+                      .toList(),
+                  onChanged: (v) => controller.statusFilter.value = v ?? 'جميع الحالات',
+                ),
               ),
 
-              // ٤. قائمة فلترة التاريخ
-              StyledDropdownFormField<String>(
-                labelText: 'التاريخ',
-                value: 'جميع التواريخ', // controller.dateFilter.value
-                items:
-                    [
-                          'جميع التواريخ',
-                          'اليوم',
-                          'أمس',
-                          'هذا الأسبوع',
-                          'هذا الشهر',
-                        ]
-                        .map(
-                          (item) =>
-                              DropdownMenuItem(value: item, child: Text(item)),
-                        )
-                        .toList(),
-                onChanged: (newValue) {
-                  /* controller.dateFilter.value = newValue; */
-                },
+              // ٤. فلتر التاريخ - مفعّل
+              Obx(
+                () => StyledDropdownFormField<String>(
+                  labelText: 'التاريخ',
+                  value: controller.dateFilter.value,
+                  items: ['جميع التواريخ', 'اليوم', 'أمس', 'هذا الأسبوع', 'هذا الشهر']
+                      .map((item) => DropdownMenuItem(value: item, child: Text(item)))
+                      .toList(),
+                  onChanged: (v) => controller.dateFilter.value = v ?? 'جميع التواريخ',
+                ),
               ),
             ],
           ),
@@ -245,7 +227,8 @@ class ExpenseView extends GetView<ExpenseController> {
                         );
                       }
 
-                      if (controller.expensesForShift.isEmpty) {
+                      final expenses = controller.filteredExpenses;
+                      if (expenses.isEmpty) {
                         return Center(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -275,9 +258,9 @@ class ExpenseView extends GetView<ExpenseController> {
                       }
 
                       return ListView.builder(
-                        itemCount: controller.expensesForShift.length,
+                        itemCount: expenses.length,
                         itemBuilder: (context, index) {
-                          final exp = controller.expensesForShift[index];
+                          final exp = expenses[index];
                           // تطبيع إلى نفس هيكل الخريطة المستخدمة في الواجهة لتقليل التغييرات
                           final expense = {
                             'id':
@@ -441,7 +424,7 @@ class ExpenseView extends GetView<ExpenseController> {
                                         tooltip: 'عرض التفاصيل',
                                       ),
                                       IconButton(
-                                        onPressed: () => _editExpense(expense),
+                                        onPressed: () => _editExpense(context, expense),
                                         icon: const Icon(
                                           Icons.edit,
                                           color: Colors.orange,
@@ -509,18 +492,89 @@ class ExpenseView extends GetView<ExpenseController> {
   }
 
   void _viewExpenseDetails(Map<String, dynamic> expense) {
-    print('عرض تفاصيل المصروف: ${expense['id']}');
+    Get.dialog(
+      AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.receipt, color: Color(0xFFF59E0B)),
+            const SizedBox(width: 8),
+            const Text('تفاصيل المصروف'),
+            const Spacer(),
+            IconButton(
+              onPressed: () => Get.back(),
+              icon: const Icon(Icons.close),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('المعرّف: ${expense['id']}', style: const TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            Text('الفئة: ${expense['category']}'),
+            const SizedBox(height: 8),
+            Text('المبلغ: ${expense['amount']} ريال', style: const TextStyle(color: Color(0xFFEF4444), fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Text('الوصف: ${expense['description']}'),
+            const SizedBox(height: 8),
+            Text('التاريخ: ${expense['date']}'),
+            const SizedBox(height: 8),
+            Text('المسؤول: ${expense['responsible']}'),
+          ],
+        ),
+      ),
+    );
   }
 
-  void _editExpense(Map<String, dynamic> expense) {
-    print('تعديل المصروف: ${expense['id']}');
+  void _editExpense(BuildContext context, Map<String, dynamic> expense) {
+    final expenseId = int.tryParse(expense['id'].toString());
+    final model = controller.expensesForShift.firstWhereOrNull((e) => e.expenseID == expenseId);
+    if (model != null) {
+      _showExpenseFormDialog(context, expense: model);
+    } else {
+      AppDialogs.show('تنبيه', 'تعذر العثور على بيانات المصروف الأصلية للتعديل');
+    }
   }
 
   void _deleteExpense(Map<String, dynamic> expense) {
-    print('حذف المصروف: ${expense['id']}');
+    final expenseId = int.tryParse(expense['id'].toString());
+    if (expenseId == null) {
+      AppDialogs.show('خطأ', 'معرف المصروف غير صالح');
+      return;
+    }
+    Get.dialog(
+      AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('تأكيد الحذف'),
+        content: const Text('هل أنت متأكد من رغبتك في حذف هذا المصروف؟'),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: const Text('إلغاء'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Get.back();
+              final shiftCtrl = Get.find<ShiftController>();
+              final shiftId = shiftCtrl.currentOpenShift.value?.shiftID ?? 1;
+              controller.deleteExpense(expenseId, shiftId);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            child: const Text('حذف'),
+          ),
+        ],
+      ),
+    );
   }
 
-  void _showAddExpenseDialog(BuildContext context) {
+  void _showExpenseFormDialog(BuildContext context, {ExpenseModel? expense}) {
+    final amountCtrl = TextEditingController(text: expense?.amount.toString() ?? '');
+    final typeCtrl = TextEditingController(text: expense?.expenseType ?? '');
+    final descCtrl = TextEditingController(text: expense?.description ?? '');
+    final recipientCtrl = TextEditingController(text: expense?.recipientName ?? '');
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -528,16 +582,59 @@ class ExpenseView extends GetView<ExpenseController> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          title: const Row(
+          title: Row(
             children: [
-              Icon(Icons.add_circle, color: Color(0xFFF59E0B)),
-              SizedBox(width: 12),
-              Text('إضافة مصروف جديد'),
+              Icon(
+                expense == null ? Icons.add_circle : Icons.edit,
+                color: const Color(0xFFF59E0B),
+              ),
+              const SizedBox(width: 12),
+              Text(expense == null ? 'إضافة مصروف جديد' : 'تعديل المصروف'),
             ],
           ),
-          content: const SizedBox(
+          content: SizedBox(
             width: 400,
-            child: Text('سيتم إضافة نموذج إضافة مصروف جديد هنا'),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: amountCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'المبلغ',
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: typeCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'نوع المصروف / الفئة',
+                      border: OutlineInputBorder(),
+                      hintText: 'مثال: صيانة، كهرباء، إيجار',
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: recipientCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'المستلم / الجهة',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: descCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'الوصف / الملاحظات',
+                      border: OutlineInputBorder(),
+                    ),
+                    maxLines: 2,
+                  ),
+                ],
+              ),
+            ),
           ),
           actions: [
             TextButton(
@@ -545,7 +642,52 @@ class ExpenseView extends GetView<ExpenseController> {
               child: const Text('إلغاء'),
             ),
             ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () async {
+                final amt = double.tryParse(amountCtrl.text) ?? 0.0;
+                if (amt <= 0) {
+                  AppDialogs.show('خطأ', 'يرجى إدخال مبلغ صالح أكبر من صفر');
+                  return;
+                }
+                if (typeCtrl.text.trim().isEmpty) {
+                  AppDialogs.show('خطأ', 'يرجى إدخال نوع المصروف');
+                  return;
+                }
+
+                Navigator.of(context).pop();
+
+                final shiftCtrl = Get.find<ShiftController>();
+                final shiftId = shiftCtrl.currentOpenShift.value?.shiftID ?? 1;
+                int userId = 1;
+                try {
+                  userId = Get.find<AuthController>().currentUser.value?.userID ?? 1;
+                } catch (_) {}
+
+                if (expense == null) {
+                  final newExpense = ExpenseModel(
+                    shiftID: shiftId,
+                    userID: userId,
+                    amount: amt,
+                    expenseDate: DateTime.now(),
+                    expenseType: typeCtrl.text.trim(),
+                    recipientName: recipientCtrl.text.trim(),
+                    description: descCtrl.text.trim(),
+                  );
+                  await controller.addExpense(newExpense, shiftId);
+                } else {
+                  final updatedExpense = ExpenseModel(
+                    expenseID: expense.expenseID,
+                    shiftID: expense.shiftID,
+                    userID: expense.userID,
+                    amount: amt,
+                    expenseDate: expense.expenseDate,
+                    expenseType: typeCtrl.text.trim(),
+                    recipientName: recipientCtrl.text.trim(),
+                    description: descCtrl.text.trim(),
+                    employeeID: expense.employeeID,
+                  );
+                  await controller.updateExpense(updatedExpense, shiftId);
+                }
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFF59E0B),
                 foregroundColor: Colors.white,
@@ -553,7 +695,7 @@ class ExpenseView extends GetView<ExpenseController> {
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              child: const Text('إضافة'),
+              child: Text(expense == null ? 'إضافة' : 'حفظ'),
             ),
           ],
         );

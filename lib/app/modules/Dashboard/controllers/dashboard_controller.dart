@@ -62,10 +62,10 @@ class DashboardController extends GetxController {
     // const ReportView(), // 10: التقارير
     const AdvancedReportView(), // 10: التقارير المتقدمة
     const UserView(), // 11: المستخدمين
-    SettingsView(), // 12: الاعدادات
-    CustomerPaymentView(), // 13: دفعات العملاء
-    ShiftView(), // 14: الورديات
-    ExpenseView(), // 15: المصروفات
+    CustomerPaymentView(), // 12: دفعات العملاء
+    ShiftView(), // 13: الورديات
+    ExpenseView(), // 14: المصروفات
+    SettingsView(), // 15: الاعدادات
   ].obs;
 
   void changeIndex(int index) {

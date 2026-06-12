@@ -26,7 +26,7 @@ class ValueListenableDropdown<T> extends StatelessWidget {
       valueListenable: valueNotifier,
       builder: (context, value, _) {
         return DropdownButtonFormField<T>(
-          value: value,
+          initialValue: value,
           items: items,
           onChanged: (newValue) {
             if (newValue != null) {
@@ -69,7 +69,7 @@ class ValueListenableSwitchTile extends StatelessWidget {
           onChanged: (newValue) => valueNotifier.value = newValue,
           title: Text(title),
           contentPadding: EdgeInsets.zero,
-          activeColor: activeColor,
+          activeThumbColor: activeColor,
         );
       },
     );

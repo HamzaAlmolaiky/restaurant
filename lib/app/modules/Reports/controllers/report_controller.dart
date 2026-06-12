@@ -381,6 +381,22 @@ class ReportController extends GetxController {
     if (args is Map) {
       fromDate.value = args['from'] as DateTime?;
       toDate.value = args['to'] as DateTime?;
+      if (args.containsKey('category')) {
+        selectedCategoryKey.value = args['category'] as String;
+        updateSubReportsForCategory(args['category'] as String);
+      }
+      if (args.containsKey('subReport')) {
+        ReportDefinition? found;
+        for (var def in availableSubReports) {
+          if (def.displayName == args['subReport']) {
+            found = def;
+            break;
+          }
+        }
+        if (found != null) {
+          selectedReportDefinition.value = found;
+        }
+      }
     }
 
     if (fromDate.value == null || toDate.value == null) {
